@@ -1,0 +1,123 @@
+---
+title: "Parameter restrictions for the sake of identification: Example 2"
+author: "Paul Gustafson"
+date: "September 30, 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(MCMCpack)
+```
+
+## Hyperparameters and supposed values
+
+```{r}
+### user-specified "known" prevalence of C
+lam.tld <- .15
+
+### or use a prior, mode at supposed value
+
+tmp <- 22   ### ess
+a <- 1+ lam.tld*(tmp-2)
+b <- tmp-a
+
+lam.bar <-  a/(a+b)  ### prior mean
+```
+
+## Theoretical RAMSE values
+
+Note: hard-wired for $Dirichlet(1,1,1,1)$ distribution on cell probs,
+prior model weights $(1/3,1/3,1/3)$.
+
+```{r}
+sg2 <- lam.bar*(1-lam.bar)/(a+b+1)
+
+rmse <- matrix(NA,2,2)
+
+rmse[1,1] <- sqrt(sg2)
+
+rmse[1,2] <- sqrt(sg2 + .25*(lam.bar-lam.tld)^2)
+
+rmse[2,1] <- sqrt((1/3)*sg2 + (1/3)*(lam.bar-lam.tld)^2)
+
+rmse[2,2] <- sqrt((1/3)*sg2 + (.5/3)*(lam.bar-lam.tld)^2)
+
+rmse <-rmse*sqrt(1/3)  ### var( v(phi)) term
+
+round(rmse,4)
+```
+
+## Not strictly necessary, but check that we can get the same answer by simulation
+
+```{r}
+### nature generates from M0
+
+phi0.tr <- rdirichlet(10000, rep(1,4))
+phi1.tr <- rdirichlet(10000, rep(1,4))
+lam.tr <- rbeta(10000, a, b)
+           
+dfun <- function(pr) {
+  pr[4]/(pr[2]+pr[4]) - pr[3]/(pr[1]+pr[3])
+}
+
+d0.tr <- apply(phi0.tr, 1, dfun)
+d1.tr <- apply(phi1.tr, 1, dfun)
+
+mse.0.0 <- mean((lam.bar-lam.tr)^2*(d1.tr-d0.tr)^2)
+
+### nature generates from M1
+mse.1.0 <- (lam.bar-lam.tld)^2*mean((d1.tr-d0.tr)^2)
+
+### nature generates from M2
+mse.2.0 <- 0  ### check
+
+### nature generates from M0
+mse.0.mix <- mean((.5*lam.bar+.5*lam.tld-lam.tr)^2*(d1.tr-d0.tr)^2)
+
+### nature generates from M1
+mse.1.mix <- (.5*lam.bar-.5*lam.tld)^2*mean((d1.tr-d0.tr)^2)
+
+### nature generates from M2
+mse.2.mix <- 0
+
+## RMSE table of interest
+rmse <- matrix(NA,2,2)
+
+rmse[1,] <- sqrt(c(mse.0.0, mse.0.mix))
+
+rmse[2,1] <- sqrt((mse.0.0+mse.1.0+mse.2.0)/3)
+
+rmse[2,2] <- sqrt((mse.0.mix+mse.1.mix+mse.2.mix)/3)
+
+round(rmse, 4)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
